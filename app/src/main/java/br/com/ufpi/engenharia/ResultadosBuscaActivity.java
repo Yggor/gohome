@@ -2,9 +2,9 @@ package br.com.ufpi.engenharia;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -15,6 +15,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -27,7 +28,7 @@ import java.util.List;
 import br.com.ufpi.engenharia.controle.ControleImovel;
 import br.com.ufpi.engenharia.entidade.Imovel;
 
-public class ListaImoveisActivity extends AppCompatActivity {
+public class ResultadosBuscaActivity extends AppCompatActivity {
 
     private FirebaseAuth auth;
     private FirebaseAuth.AuthStateListener authListener;
@@ -37,19 +38,48 @@ public class ListaImoveisActivity extends AppCompatActivity {
     private MyCustomAdapter dataAdapter = null;
     private ListView listView = null;
     private List<Imovel> imoveis = null;
-    private ControleImovel controleImovel = new ControleImovel(ListaImoveisActivity.this);
-    public final static String nomeImovel = "";
+    private ControleImovel controleImovel = new ControleImovel(ResultadosBuscaActivity.this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_lista_imoveis);
+        setContentView(R.layout.activity_resultados_busca);
         setFirebase();
-        List<Imovel> imoveis = controleImovel.buscarImovel();
+        Bundle bundle = getIntent().getExtras();
+        String bairro = bundle.getString("bairro");
+        int valorMaximo = bundle.getInt("valorMaximo");
+        int quantidadeDeQuartos = bundle.getInt("quantidadeDeQuartos");
+        List<Imovel> imoveis = null;
 
-        dataAdapter = new MyCustomAdapter(ListaImoveisActivity.this,
-                R.layout.lista_imoveis_result, imoveis);
+
+        /*imoveis = controleImovel.buscarImovel(valorMaximo); *//*APAGAR ESTA LINHA, E REMOVER O COMENTÁRIO ABAIXO QUANDO O BANCO
+        ESTIVER ATUALIZADO COM OS ATRIBUTOS*/
+
+        if(bairro==null && quantidadeDeQuartos==999) {
+            imoveis = controleImovel.buscarImovel(valorMaximo);
+            Toast.makeText(ResultadosBuscaActivity.this, "por valor apenas", Toast.LENGTH_LONG).show();
+        }
+
+        if(bairro==null && quantidadeDeQuartos!=999) {
+            imoveis = controleImovel.buscarImovel(valorMaximo, quantidadeDeQuartos);
+            Toast.makeText(ResultadosBuscaActivity.this, "por quantidade de quartos", Toast.LENGTH_LONG).show();
+        }
+
+        if(bairro!=null && quantidadeDeQuartos==999) {
+            imoveis = controleImovel.buscarImovel(valorMaximo, bairro);
+
+            Toast.makeText(ResultadosBuscaActivity.this, "por bairro e valor", Toast.LENGTH_LONG).show();
+        }
+
+        if(bairro!=null && quantidadeDeQuartos!=999) {
+            imoveis = controleImovel.buscarImovel(valorMaximo, quantidadeDeQuartos, bairro);
+
+            Toast.makeText(ResultadosBuscaActivity.this, "por quantidade de quartos e bairro", Toast.LENGTH_LONG).show();
+        }
+
+        dataAdapter = new MyCustomAdapter(ResultadosBuscaActivity.this,
+                R.layout.activity_resultados_busca, imoveis);
         listView = (ListView) findViewById(R.id.list_view_tela_lista_imoveis);
         // Assign adapter to ListView
         listView.setAdapter(dataAdapter);
@@ -71,8 +101,9 @@ public class ListaImoveisActivity extends AppCompatActivity {
             //final ImageView imageView;
             TextView endereco;
             TextView valor;
+            TextView quantidadeDeQuartos;
+            TextView bairro;
             TextView status;
-
 
             public ViewHolder(View view) {
 
@@ -80,6 +111,8 @@ public class ListaImoveisActivity extends AppCompatActivity {
                 //imageView = (ImageView) view.findViewById(R.id.roupa_busca_imagem);
                 endereco = (TextView) view.findViewById(R.id.lista_endereco);
                 valor = (TextView) view.findViewById(R.id.lista_valor);
+                quantidadeDeQuartos = (TextView) view.findViewById(R.id.lista_quantidade_de_quartos);
+                bairro = (TextView) view.findViewById(R.id.lista_bairro);
                 status = (TextView) view.findViewById(R.id.lista_status);
             }
         }
@@ -105,71 +138,47 @@ public class ListaImoveisActivity extends AppCompatActivity {
             holder.nome.setText(listaImoveis2.get(position).getNome());
             holder.endereco.setText(listaImoveis2.get(position).getEndereco());
             holder.valor.setText( String.valueOf(listaImoveis2.get(position).getValor()));
+            holder.bairro.setText( String.valueOf(listaImoveis2.get(position).getBairro()));
+            holder.quantidadeDeQuartos.setText( String.valueOf(listaImoveis2.get(position).getQuantidade_de_quartos()));
             holder.status.setText(listaImoveis2.get(position).isAlugado()? "Alugado":"Disponível");
-           
+            /*
+            Bitmap bitmap = null;
+            try {
+                byte[] fotoEmBytes = Base64.decode(listaRoupas2.get(position).getFoto(), Base64.DEFAULT);
+                bitmap = BitmapFactory.decodeByteArray(fotoEmBytes, 0, fotoEmBytes.length);
+            }catch(Exception e){
+
+            }
+            if(bitmap!=null)
+                holder.imageView.setImageBitmap(bitmap);
+            */
+
+            //holder.imageView.setImageResource(listaRoupas2.get(position).getFoto());
             return view;
         }
     }
 
-    @Override
     public void onCreateContextMenu(ContextMenu menu, View v, final ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
-        MenuItem deletar = menu.add("Deletar");
-        MenuItem detalhes = menu.add("Mostra no Mapa");
-        deletar.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+        MenuItem alugar = menu.add("Alugar");
+        alugar.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
                 Imovel imovel = (Imovel) listView.getItemAtPosition(info.position);
-                controleImovel.deleta(imovel, ListaImoveisActivity.this);
+                controleImovel.aluga(imovel, ResultadosBuscaActivity.this);
                 imoveis = controleImovel.buscarImovel();
-                dataAdapter = new MyCustomAdapter(ListaImoveisActivity.this,
-                        R.layout.lista_imoveis_result, imoveis);
-                listView = (ListView) findViewById(R.id.list_view_tela_lista_imoveis);
+                //dataAdapter = new MyCustomAdapter(ResultadosBuscaActivity.this,
+                //        R.layout.lista_imoveis_result, imoveis);
+                //listView = (ListView) findViewById(R.id.list_view_tela_lista_imoveis);
                 // Assign adapter to ListView
-                listView.setAdapter(dataAdapter);
+                //listView.setAdapter(dataAdapter);
+                Toast.makeText(ResultadosBuscaActivity.this,"Alugado!", Toast.LENGTH_LONG).show();
+                finish();
                 return false;
             }
         });
-
-        detalhes.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                Imovel novoImovel;
-                Intent i = new Intent(ListaImoveisActivity.this, MapsLocationActivity.class);
-                AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                Imovel imovel = (Imovel) listView.getItemAtPosition(info.position);
-
-                i.putExtra(nomeImovel, imovel.getNome());
-                i.putExtra("doubleLatitude", imovel.getLatA());
-                i.putExtra("doubleLongitude", imovel.getLongA());
-                startActivity(i);
-                return false;
-            }
-        });
-
-        /*
-        MenuItem alterar = menu.add("Alterar");
-        deletar.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                Imovel imovel = (Imovel) listView.getItemAtPosition(info.position);
-                controleImovel.altera(imovel, ListaImoveisActivity.this);
-                imoveis = controleImovel.buscarImovel();
-                dataAdapter = new MyCustomAdapter(ListaImoveisActivity.this,
-                        R.layout.lista_imoveis_result, imoveis);
-                listView = (ListView) findViewById(R.id.list_view_tela_lista_imoveis);
-                // Assign adapter to ListView
-                listView.setAdapter(dataAdapter);
-                return false;
-            }
-        });
-        */
-
-
     }
-
 
 
 
@@ -187,7 +196,7 @@ public class ListaImoveisActivity extends AppCompatActivity {
                 if (user == null) {
                     // user auth state is changed - user is null
                     // launch login activity
-                    startActivity(new Intent(ListaImoveisActivity.this, MainActivity.class));
+                    startActivity(new Intent(ResultadosBuscaActivity.this, MainActivity.class));
                     finish();
                 }
             }

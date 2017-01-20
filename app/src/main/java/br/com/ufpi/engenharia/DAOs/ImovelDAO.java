@@ -28,6 +28,11 @@ public class ImovelDAO extends SQLiteOpenHelper {
                 "id INTEGER PRIMARY KEY," +
                 "valor INTEGER," +
                 "endereco TEXT," +
+                "bairro TEXT," +
+                "quantidade_de_quartos INTEGER," +
+                "lat DOUBLE," +
+                "long DOUBLE," +
+                "status TEXT," +
                 "nome TEXT NOT NULL UNIQUE);";
         db.execSQL(sql);
     }
@@ -57,14 +62,23 @@ public class ImovelDAO extends SQLiteOpenHelper {
      * Altera dados de um imóvel no banco local
      * @param imovel
      */
-      public void altera(Imovel imovel) {
-          SQLiteDatabase db = getWritableDatabase();
+    public void altera(Imovel imovel) {
+        SQLiteDatabase db = getWritableDatabase();
 
-          ContentValues dados = pegaDadosDoImovel(imovel);
+        ContentValues dados = pegaDadosDoImovel(imovel);
 
-          String[] params = {imovel.getNome()};
-          db.update("Imoveis", dados, "nome = ?", params);
-      }
+        String[] params = {imovel.getNome()};
+        db.update("Imoveis", dados, "nome = ?", params);
+    }
+
+    public void aluga(Imovel imovel) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        ContentValues dados = pegaDadosDoImovel(imovel);
+
+        String[] params = {imovel.getNome()};
+        db.update("Imoveis", dados, "nome = ?", params);
+    }
 
     /***
      * Lista imóveis do banco local
@@ -82,11 +96,42 @@ public class ImovelDAO extends SQLiteOpenHelper {
             imovel.setValor(c.getInt(c.getColumnIndex("valor")));
             imovel.setNome(c.getString(c.getColumnIndex("nome")));
             imovel.setEndereco(c.getString(c.getColumnIndex("endereco")));
+            imovel.setBairro(c.getString(c.getColumnIndex("bairro")));
+            imovel.setQuantidade_de_quartos(c.getInt(c.getColumnIndex("quantidade_de_quartos")));
+            imovel.setLatA(c.getDouble(c.getColumnIndex("lat")));
+            imovel.setLongA(c.getDouble(c.getColumnIndex("long")));
+            imovel.setAlugado(c.getString(c.getColumnIndex("status")).equalsIgnoreCase("alugado") ? true : false);
             imoveis.add(imovel);
         }
         c.close();
 
         return imoveis;
+    }
+
+    /*
+    * Retorna um unico imovel do banco
+    * @param imovel
+    *
+    * */
+    public Imovel buscaImovel(String nome){
+        SQLiteDatabase db = getReadableDatabase();
+        String sql = "SELECT * FROM Imoveis WHERE nome = '"+nome+"'";
+
+        Cursor c = db.rawQuery(sql, null);
+        Imovel imovel = new Imovel();
+        while(c.moveToNext()) {
+            imovel.setValor(c.getInt(c.getColumnIndex("valor")));
+            imovel.setNome(c.getString(c.getColumnIndex("nome")));
+            imovel.setEndereco(c.getString(c.getColumnIndex("endereco")));
+            imovel.setBairro(c.getString(c.getColumnIndex("bairro")));
+            imovel.setQuantidade_de_quartos(c.getInt(c.getColumnIndex("quantidade_de_quartos")));
+            imovel.setLatA(c.getDouble(c.getColumnIndex("lat")));
+            imovel.setLongA(c.getDouble(c.getColumnIndex("long")));
+            imovel.setAlugado(c.getString(c.getColumnIndex("status")).equalsIgnoreCase("alugado") ? true : false);
+        }
+        c.close();
+
+        return imovel;
     }
 
     /***
@@ -109,6 +154,95 @@ public class ImovelDAO extends SQLiteOpenHelper {
         dados.put("nome", imovel.getNome());
         dados.put("endereco", imovel.getEndereco());
         dados.put("valor", imovel.getValor());
+        dados.put("bairro", imovel.getBairro());
+        dados.put("quantidade_de_quartos", imovel.getQuantidade_de_quartos());
+        dados.put("lat", imovel.getLatA());
+        dados.put("long", imovel.getLongA());
+        dados.put("status", imovel.isAlugado() ? "alugado" : "disponivel");
         return dados;
+    }
+
+
+
+    public List<Imovel> buscaImoveisPorValorEBairro(int valorMaximo, String bairro) {
+        String sql = "SELECT * FROM Imoveis where valor <= " + valorMaximo + " and bairro = '" + bairro + "'";
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery(sql, null);
+
+        List<Imovel> imoveis = new ArrayList<>();
+
+        while(c.moveToNext()) {
+            Imovel imovel = new Imovel();
+            imovel.setValor(c.getInt(c.getColumnIndex("valor")));
+            imovel.setNome(c.getString(c.getColumnIndex("nome")));
+            imovel.setEndereco(c.getString(c.getColumnIndex("endereco")));
+            imoveis.add(imovel);
+        }
+        c.close();
+
+        return imoveis;
+    }
+
+    public List<Imovel> buscaImoveisPorValorEQuartos(int valorMaximo, int quantidadeDeQuartos) {
+        String sql = "SELECT * FROM Imoveis where valor <= " + valorMaximo + " and quantidade_de_quartos = " + quantidadeDeQuartos;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery(sql, null);
+
+        List<Imovel> imoveis = new ArrayList<>();
+
+        while(c.moveToNext()) {
+            Imovel imovel = new Imovel();
+            imovel.setValor(c.getInt(c.getColumnIndex("valor")));
+            imovel.setNome(c.getString(c.getColumnIndex("nome")));
+            imovel.setEndereco(c.getString(c.getColumnIndex("endereco")));
+            imoveis.add(imovel);
+        }
+        c.close();
+
+        return imoveis;
+    }
+
+    public List<Imovel> buscaImoveisPorValorQuantidadeDeQuartosBairro(int valorMaximo, int quantidadeDeQuartos, String bairro) {
+        String sql = "SELECT * FROM Imoveis where valor <= " + valorMaximo + " and quantidade_de_quartos = " + quantidadeDeQuartos
+                + " and bairro = '" + bairro + "'";
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery(sql, null);
+
+        List<Imovel> imoveis = new ArrayList<>();
+
+        while(c.moveToNext()) {
+            Imovel imovel = new Imovel();
+            imovel.setValor(c.getInt(c.getColumnIndex("valor")));
+            imovel.setNome(c.getString(c.getColumnIndex("nome")));
+            imovel.setEndereco(c.getString(c.getColumnIndex("endereco")));
+            imoveis.add(imovel);
+        }
+        c.close();
+
+        return imoveis;
+    }
+
+    /***
+     * Busca imóveis até um valor máximo limite
+     * @param valorMaximo
+     * @return
+     */
+    public List<Imovel> buscaImoveisPorValor(int valorMaximo) {
+        String sql = "SELECT * FROM Imoveis where valor <= " + valorMaximo;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery(sql, null);
+
+        List<Imovel> imoveis = new ArrayList<>();
+
+        while(c.moveToNext()) {
+            Imovel imovel = new Imovel();
+            imovel.setValor(c.getInt(c.getColumnIndex("valor")));
+            imovel.setNome(c.getString(c.getColumnIndex("nome")));
+            imovel.setEndereco(c.getString(c.getColumnIndex("endereco")));
+            imoveis.add(imovel);
+        }
+        c.close();
+
+        return imoveis;
     }
 }
